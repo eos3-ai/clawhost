@@ -208,7 +208,7 @@ func CreateDeployment(ctx context.Context, botID, userID, accessToken string, co
 								if config != nil && config.AccessToken != "" {
 									// Generate full config JSON (including models) and write before starting gateway
 									configJSON := buildOpenClawConfig(config, true)
-									return []string{"sh", "-c", fmt.Sprintf(`cat > /home/node/.openclaw/openclaw.json << 'EOFCONFIG'
+									return []string{"sh", "-c", fmt.Sprintf(`[ -f /home/node/.openclaw/openclaw.json ] || cat > /home/node/.openclaw/openclaw.json << 'EOFCONFIG'
 %s
 EOFCONFIG
 exec openclaw gateway --port %d --bind lan --allow-unconfigured --dev`, configJSON, gatewayPort)}
@@ -513,7 +513,7 @@ func UpdateDeploymentConfig(ctx context.Context, botID, accessToken string, conf
 			if config != nil && config.AccessToken != "" {
 				// Use full config to preserve models section
 				configJSON := buildOpenClawConfig(config, true)
-				container.Command = []string{"sh", "-c", fmt.Sprintf(`cat > /home/node/.openclaw/openclaw.json << 'EOFCONFIG'
+				container.Command = []string{"sh", "-c", fmt.Sprintf(`[ -f /home/node/.openclaw/openclaw.json ] || cat > /home/node/.openclaw/openclaw.json << 'EOFCONFIG'
 %s
 EOFCONFIG
 node /app/openclaw.mjs gateway --port %d --bind lan --allow-unconfigured --dev`, configJSON, gatewayPort)}

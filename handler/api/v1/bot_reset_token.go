@@ -58,6 +58,11 @@ func ResetBotToken(c echo.Context) error {
 		if err := k8s.UpdateDeploymentConfig(ctx, bot.ID, newToken, k8sConfig); err != nil {
 			c.Logger().Warnf("failed to update deployment after token reset: %v", err)
 		}
+
+		// Also sync full config to the running pod so openclaw.json immediately reflects the new token
+		if err := k8s.SyncConfigToPod(ctx, bot.ID); err != nil {
+			c.Logger().Warnf("failed to sync config to pod after token reset: %v", err)
+		}
 	}
 
 	return util.Success(c, map[string]interface{}{
