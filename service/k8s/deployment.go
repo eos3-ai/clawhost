@@ -191,8 +191,11 @@ func CreateDeployment(ctx context.Context, botID, userID, accessToken string, co
 							Image:           image,
 							ImagePullPolicy: imagePullPolicy(image),
 							SecurityContext: &corev1.SecurityContext{
-								RunAsUser:                func() *int64 { v := int64(1000); return &v }(),
-								RunAsGroup:               func() *int64 { v := int64(1000); return &v }(),
+								// Run openclaw as root inside the container. Some workflows
+								// (e.g. local tooling, device access) require UID 0.
+								// If your cluster enforces non-root, change this back to 1000.
+								RunAsUser:                func() *int64 { v := int64(0); return &v }(),
+								RunAsGroup:               func() *int64 { v := int64(0); return &v }(),
 								AllowPrivilegeEscalation: func() *bool { v := false; return &v }(),
 							},
 							Ports: []corev1.ContainerPort{
@@ -216,11 +219,25 @@ exec openclaw gateway --port %d --bind lan --allow-unconfigured --dev`, configJS
 								return []string{"openclaw", "gateway", "--port", fmt.Sprintf("%d", gatewayPort), "--bind", "lan", "--allow-unconfigured", "--dev"}
 							}(),
 							Env: func() []corev1.EnvVar {
+								// Force HOME to /home/node so that OpenClaw wrapper using $HOME/.openclaw
+								// still points to the PVC-backed directory even when running as root.
 								envs := []corev1.EnvVar{
+									{
+										Name:  "HOME",
+										Value: "/home/node",
+									},
 									{
 										Name:  "NODE_OPTIONS",
 										Value: fmt.Sprintf("--max-old-space-size=%d", nodeMaxOldSpaceSize),
 									},
+								}
+								// Pass gateway token via env so OpenClaw always has auth in LAN mode,
+								// even if the config file is missing or stale.
+								if config != nil && config.AccessToken != "" {
+									envs = append(envs, corev1.EnvVar{
+										Name:  "OPENCLAW_GATEWAY_TOKEN",
+										Value: config.AccessToken,
+									})
 								}
 								if config != nil {
 									if config.APIKey != "" {
@@ -523,7 +540,16 @@ node /app/openclaw.mjs gateway --port %d --bind lan --allow-unconfigured --dev`,
 
 			// Update env vars
 			newEnvs := []corev1.EnvVar{
+				// Keep HOME pointing at /home/node so $HOME/.openclaw matches the PVC mount
+				{Name: "HOME", Value: "/home/node"},
 				{Name: "NODE_OPTIONS", Value: fmt.Sprintf("--max-old-space-size=%d", nodeMaxOldSpaceSize)},
+			}
+			// Ensure gateway token is always available via env for LAN bind
+			if config != nil && config.AccessToken != "" {
+				newEnvs = append(newEnvs, corev1.EnvVar{
+					Name:  "OPENCLAW_GATEWAY_TOKEN",
+					Value: config.AccessToken,
+				})
 			}
 			if config != nil {
 				if config.APIKey != "" {
