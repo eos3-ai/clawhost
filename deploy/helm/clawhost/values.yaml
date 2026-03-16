@@ -78,6 +78,9 @@ openclaw:
   memoryLimit: "4Gi"
   cpuRequest: "500m"
   memoryRequest: "1Gi"
+  # Ephemeral storage limit applied to each OpenClaw bot pod (container resources.limits.ephemeral-storage).
+  # If empty, the server-side default in code is used (currently "1Gi").
+  ephemeralStorageLimit: "1Gi"
 
 ## Ingress
 ingress:

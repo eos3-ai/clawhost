@@ -40,3 +40,6 @@ data:
     memory_limit = {{ .Values.openclaw.memoryLimit | quote }}
     cpu_request = {{ .Values.openclaw.cpuRequest | quote }}
     memory_request = {{ .Values.openclaw.memoryRequest | quote }}
+    {{- if .Values.openclaw.ephemeralStorageLimit }}
+    ephemeral_storage_limit = {{ .Values.openclaw.ephemeralStorageLimit | quote }}
+    {{- end }}
